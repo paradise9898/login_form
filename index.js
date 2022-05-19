@@ -121,8 +121,7 @@ app.get('/setup', async (req, res) => {
 			const newAdmin = new User({
 				username: "admin",
 				password: hash
-			});
-
+			})
 			newAdmin.save();
 
 			res.redirect('/login');
