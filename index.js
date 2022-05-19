@@ -6,11 +6,13 @@ const passport			= require('passport');
 const localStrategy		= require('passport-local').Strategy;
 const bcrypt			= require('bcrypt');
 const app				= express();
+const path	= require('path');
+const PORT = process.env.PORT ||3333
+const UserRouter = require('./controllers/usersRouter')
+const XMLHttpRequest = require('xhr2')
 
-mongoose.connect("mongodb://localhost:27017/node-auth-yt", {
-	useNewUrlParser: true,
-	useUnifiedTopology: true
-});
+
+
 
 const UserSchema = new mongoose.Schema({
 	username: {
@@ -27,9 +29,17 @@ const User = mongoose.model('User', UserSchema);
 
 
 // Middleware
-app.engine('hbs', hbs({ extname: '.hbs' }));
-app.set('view engine', 'hbs');
-app.use(express.static(__dirname + '/public'));
+app.use(express.json())
+app.use(express.json({extended: true}))
+app.use(express.urlencoded())
+app.set('view engine', 'pug')
+
+app.use(express(__dirname + '/views'))
+app.use("/public", express.static(path.join(__dirname, 'public')));
+
+
+
+
 app.use(session({
 	secret: "verygoodsecret",
 	resave: false,
@@ -37,6 +47,8 @@ app.use(session({
 }));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+app.use('/userauth', UserRouter);
+
 
 // Passport.js
 app.use(passport.initialize());
@@ -105,6 +117,29 @@ app.get('/logout', function (req, res) {
 });
 
 // Setup our admin user
+app.post('/userauth', async (req, res) => {
+    
+    const formData  = JSON.stringify( req.body); 
+    console.log(formData);
+    const  http = new XMLHttpRequest();
+    const  url = "http://localhost:3333/userauth/usersregistration"
+    const  method = "POST";
+    const  data = formData
+
+    http.open(method, url,);
+    http.setRequestHeader('Content-Type', 'application/json');
+    http.onreadystatechange = function(){
+      if (http.readyState === XMLHttpRequest.DONE && http.status === 201){
+        console.log(JSON.parse(http.responseText));
+      }
+    }
+
+    http.send(data);
+
+    res.redirect('userpage')
+});
+
+
 app.get('/setup', async (req, res) => {
 	const exists = await User.exists({ username: "admin" });
 
@@ -121,7 +156,8 @@ app.get('/setup', async (req, res) => {
 			const newAdmin = new User({
 				username: "admin",
 				password: hash
-			})
+			});
+
 			newAdmin.save();
 
 			res.redirect('/login');
@@ -129,6 +165,18 @@ app.get('/setup', async (req, res) => {
 	});
 });
 
-app.listen(3000, () => {
-	console.log("Listening on port 3000");
-});
+
+async function launch(){
+    try {
+        await mongoose.connect('mongodb+srv://auth:auth99@auth.jkfzj.mongodb.net/?retryWrites=true&w=majority',{ useNewUrlParser: true } , { useUnifiedTopology: true },)
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+launch()
+
+
+app.listen(PORT, (req, res) => {
+    console.log(`http://localhost:${PORT}`);
+})
